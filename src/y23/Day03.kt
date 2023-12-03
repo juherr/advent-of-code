@@ -5,73 +5,51 @@ import readInput
 // https://adventofcode.com/2023/day/3
 fun main() {
     data class Number(val value: String, val coord: Pair<Int, Int>)
+    data class Symbol(val value: Char, val coord: Pair<Int, Int>)
 
-    fun captureSymbols(schematic: List<String>): List<Pair<Pair<Int, Int>, Char>> {
-        val symbols = mutableListOf<Pair<Pair<Int, Int>, Char>>()
-        for (i in schematic.indices) {
-            for (j in schematic[i].indices) {
-                if (!schematic[i][j].isDigit() && schematic[i][j] != '.') {
-                    symbols.add(i to j to schematic[i][j])
-                }
-            }
+    fun Char.isSymbol() = !(this.isDigit() || this == '.')
+
+    fun captureSymbols(schematic: List<String>) = schematic.flatMapIndexed { i, row ->
+        row.mapIndexedNotNull { j, char ->
+            if (char.isSymbol()) {
+                Symbol(schematic[i][j], i to j)
+            } else null
         }
-        return symbols
     }
 
-    fun captureNumbers(schematic: List<String>): Map<Pair<Int, Int>, String> {
-        val numbers = mutableMapOf<Pair<Int, Int>, String>()
-        for (i in schematic.indices) {
-            var str = ""
-            var coord: Pair<Int, Int>? = null
-            for (j in schematic[i].indices) {
-                if (schematic[i][j].isDigit()) {
-                    if (coord == null) {
-                        check(str.isEmpty())
-                        coord = i to j
-                    }
-                    str += schematic[i][j]
-                } else {
-                    if (str.isNotEmpty() && coord != null) {
-                        numbers[coord] = str
-                        str = ""
-                        coord = null
-                    }
-                }
-            }
-            if (str.isNotEmpty() && coord != null) {
-                numbers[coord] = str
-            }
+    fun captureNumbers(schematic: List<String>) =
+        schematic.flatMapIndexed { index, line ->
+            Regex("(\\d++)").findAll(line).map {
+                Number(it.value, index to it.range.first)
+            }.toList()
         }
-        return numbers
-    }
 
-    fun filterPart(numbers: Map<Pair<Int, Int>, String>, symbols: List<Pair<Int, Int>>): List<Number> {
-        val filtered = mutableListOf<Number>()
-        for (number in numbers) {
+    fun filterPart(numbers: List<Number>, symbols: List<Pair<Int, Int>>) =
+        numbers.mapNotNull {
             val symbol = symbols.firstOrNull { symbol ->
-                symbol.first in number.key.first - 1..number.key.first + 1
-                        && symbol.second in number.key.second - 1..number.key.second + number.value.length
+                symbol.first in it.coord.first - 1..it.coord.first + 1
+                        && symbol.second in it.coord.second - 1..it.coord.second + it.value.length
             }
             if (symbol != null) {
-                filtered.add(Number(number.value, number.key))
+                it
+            } else {
+                null
             }
         }
-        return filtered
-    }
 
     fun getPart1Result(schematic: List<String>): Int {
         val symbols = captureSymbols(schematic)
         val numbers = captureNumbers(schematic)
-        return filterPart(numbers, symbols.map { it.first }).sumOf { it.value.toInt() }
+        return filterPart(numbers, symbols.map { it.coord }).sumOf { it.value.toInt() }
     }
 
     fun getPart2Result(schematic: List<String>): Int {
-        val gears = captureSymbols(schematic).filter { it.second == '*' }
+        val gears = captureSymbols(schematic).filter { it.value == '*' }
         val numbers = captureNumbers(schematic)
         return gears.sumOf { gear ->
             val filtered = numbers.filter { number ->
-                gear.first.first in number.key.first - 1..number.key.first + 1
-                        && gear.first.second in number.key.second - 1..number.key.second + number.value.length
+                gear.coord.first in number.coord.first - 1..number.coord.first + 1
+                        && gear.coord.second in number.coord.second - 1..number.coord.second + number.value.length
             }
             if (filtered.size == 2) {
                 filtered.map { it.value.toInt() }.reduce { acc, i -> acc * i }
