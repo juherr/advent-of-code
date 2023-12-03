@@ -1,6 +1,7 @@
 package y23
 
 import readInput
+import kotlin.math.max
 
 // https://adventofcode.com/2023/day/2
 fun main() {
@@ -16,19 +17,23 @@ fun main() {
         val power: Int = red * green * blue
     }
 
+    fun String.toCubeSet(): CubeSet {
+        val cubes = this.split(", ").associate {
+            val (count, color) = it.split(" ")
+            color to count.toInt()
+        }
+        return CubeSet(
+            red = cubes["red"] ?: 0, green = cubes["green"] ?: 0, blue = cubes["blue"] ?: 0
+        )
+    }
+
     fun parseGameData(input: List<String>): Map<Int, List<CubeSet>> {
         return input.associate { row ->
-            val (game, cubeSets) = row.split(": ")
+            val (gameDescriptor, cubeSets) = row.split(": ")
             val cubeSetsList = cubeSets.split("; ").map { cubeSet ->
-                val cubes = cubeSet.split(", ").associate {
-                    val (count, color) = it.split(" ")
-                    color to count.toInt()
-                }
-                CubeSet(
-                    red = cubes["red"] ?: 0, green = cubes["green"] ?: 0, blue = cubes["blue"] ?: 0
-                )
+                cubeSet.toCubeSet()
             }
-            val (_, gameId) = game.split(" ")
+            val (_, gameId) = gameDescriptor.split(" ")
             gameId.toInt() to cubeSetsList
         }
     }
@@ -48,20 +53,17 @@ fun main() {
 
     println("Part1 answer: ${getPart1Result(gameData)}")
 
-    fun minCubesForGame(gameData: List<CubeSet>): CubeSet {
-        var red = 0
-        var green = 0
-        var blue = 0
-        gameData.forEach { cubeSet ->
-            if (cubeSet.red > red) red = cubeSet.red
-            if (cubeSet.green > green) green = cubeSet.green
-            if (cubeSet.blue > blue) blue = cubeSet.blue
+    fun getMinimumCubesForGame(gameData: List<CubeSet>) =
+        gameData.fold(CubeSet(0, 0, 0)) { accumulator, cubeSet ->
+            CubeSet(
+                max(accumulator.red, cubeSet.red),
+                max(accumulator.green, cubeSet.green),
+                max(accumulator.blue, cubeSet.blue)
+            )
         }
-        return CubeSet(red = red, green = green, blue = blue)
-    }
 
-    fun getPart2Result(gameData: Map<Int, List<CubeSet>>): Int =
-        gameData.values.map(::minCubesForGame).sumOf(CubeSet::power)
+    fun getPart2Result(gameData: Map<Int, List<CubeSet>>) =
+        gameData.values.map(::getMinimumCubesForGame).sumOf { it.power }
 
     check(getPart2Result(gameDataTest) == 2286)
 
